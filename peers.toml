@@ -2,11 +2,22 @@
 # 如果使用此文件，将覆盖默认的 peer 配置
 
 [[peer]]
-uri = "tcp://8.134.177.98:19001"
+uri = "tcp://public.easytier.cn:11010"
 
 [[peer]]
-uri = "tcp://47.119.115.81:19001"
+uri = "tcp://et.gbc.moe:11010"
 
+[[peer]]
+uri = "tcp://et.gbc.moe:11010"
+
+[[peer]]
+uri = "tcp://weior.top:11010"
+
+[[peer]]
+uri = "tcp://221.7.223.136:11010"
+
+[[peer]]
+uri = "tcp://gz.server.piedaochuan.top:11010"
 # 可以添加更多 peer
 # [[peer]]
 # uri = "tcp://your-peer-ip:19001"
