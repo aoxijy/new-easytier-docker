@@ -16,14 +16,10 @@ services:
       - net.ipv4.ip_forward=1
       - net.ipv6.conf.all.forwarding=1
     ports:
-      # 主要通信端口
       - "${TCP_PORT}:19001/tcp"
       - "${TCP_PORT}:19001/udp"
-      # WebSocket Secure 端口
       - "${WSS_PORT}:19002/tcp"
-      # Web 管理界面端口 (对应你现在的 11211)
       - "${WEB_PORT}:11211/tcp"
-      # RPC 管理端口
       - "15889:15889/tcp"
     environment:
       - INSTANCE_NAME=${INSTANCE_NAME}
@@ -32,6 +28,7 @@ services:
       - DHCP=${DHCP}
       - HOSTNAME=${HOSTNAME}
       - NETWORK_NAME=${NETWORK_NAME}
+      # 敏感信息通过环境文件或运行时传入
       - NETWORK_SECRET=${NETWORK_SECRET}
       - RPC_PORTAL=${RPC_PORTAL}
       - WEB_PORT=${WEB_PORT}
@@ -46,7 +43,6 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      # 可选：挂载自定义 peer 配置
       - ./peers.toml:/app/peers.toml:ro
     healthcheck:
       test: ["CMD", "pidof", "easytier-core"]
