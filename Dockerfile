@@ -4,15 +4,15 @@ FROM alpine:latest
 ARG EASYTIER_VERSION=2.1.2
 ARG TARGETARCH=amd64
 
-# 环境变量
+# 环境变量（移除敏感信息）
 ENV EASYTIER_VERSION=${EASYTIER_VERSION}
 ENV INSTANCE_NAME=node-docker
 ENV MACHINE_ID=
 ENV IPV4=172.18.28.100
 ENV DHCP=false
 ENV HOSTNAME=easytier-docker
-ENV NETWORK_NAME=gqru
-ENV NETWORK_SECRET=gqru123456
+ENV NETWORK_NAME=yksnet
+# 注意：NETWORK_SECRET 不再在这里设置，通过运行时环境变量传入
 ENV RPC_PORTAL=0.0.0.0:15889
 ENV WEB_PORT=11211
 ENV API_HOST=https://zw.gqru.com
@@ -53,10 +53,6 @@ RUN chown -R easytier:easytier /app && \
     chmod +x entrypoint.sh
 
 # 暴露端口
-# 19001: TCP/UDP 主要通信端口
-# 19002: WebSocket Secure 端口  
-# 11211: Web 管理界面端口
-# 15889: RPC 管理端口
 EXPOSE 19001/tcp 19001/udp 19002/tcp 11211/tcp 15889/tcp
 
 # 切换用户
