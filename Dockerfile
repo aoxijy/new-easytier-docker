@@ -11,9 +11,11 @@ ENV MACHINE_ID=
 ENV IPV4=172.18.28.100
 ENV DHCP=false
 ENV HOSTNAME=easytier-docker
-ENV NETWORK_NAME=gqrunet
-ENV NETWORK_SECRET=gqru123456
-ENV RPC_PORTAL=127.0.0.1:15889
+ENV NETWORK_NAME=yksnet
+ENV NETWORK_SECRET=kulacc369Q
+ENV RPC_PORTAL=0.0.0.0:15889
+ENV WEB_PORT=11211
+ENV API_HOST=https://zw.gqru.com
 ENV TCP_PORT=19001
 ENV WSS_PORT=19002
 ENV CONFIG_SERVER=udp://127.0.0.1:22020
@@ -29,7 +31,7 @@ RUN apk add --no-cache curl iptables ip6tables unzip && \
 # 创建工作目录
 WORKDIR /app
 
-# 下载并安装 EasyTier
+# 下载并安装 EasyTier (包含 core 和 web-embed)
 RUN ARCH=$(case "$TARGETARCH" in \
         "amd64") echo "x86_64" ;; \
         "arm64") echo "aarch64" ;; \
@@ -39,8 +41,8 @@ RUN ARCH=$(case "$TARGETARCH" in \
     "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
     unzip easytier.zip && \
     rm easytier.zip && \
-    chmod +x easytier-core && \
-    mv easytier-core /usr/local/bin/
+    chmod +x easytier-core easytier-web-embed && \
+    mv easytier-core easytier-web-embed /usr/local/bin/
 
 # 复制配置文件和启动脚本
 COPY config.toml.template ./
@@ -52,9 +54,10 @@ RUN chown -R easytier:easytier /app && \
 
 # 暴露端口
 # 19001: TCP/UDP 主要通信端口
-# 19002: WebSocket Secure 端口
+# 19002: WebSocket Secure 端口  
+# 11211: Web 管理界面端口
 # 15889: RPC 管理端口
-EXPOSE 19001/tcp 19001/udp 19002/tcp 15889/tcp
+EXPOSE 19001/tcp 19001/udp 19002/tcp 11211/tcp 15889/tcp
 
 # 切换用户
 USER easytier
