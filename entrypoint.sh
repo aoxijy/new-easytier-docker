@@ -38,10 +38,10 @@ else
 
 # 默认 peer 配置
 [[peer]]
-uri = "tcp://gd.et.tianpao.top:11010"
+uri = "tcp://103.236.68.86:11010"
 
 [[peer]]
-uri = "tcp://gz.server.piedaochuan.top:11010"
+uri = "tcp://web.sitmc.club:11010"
 EOF
 fi
 
