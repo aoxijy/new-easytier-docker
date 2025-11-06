@@ -12,6 +12,12 @@ if [ -z "$MACHINE_ID" ]; then
     export MACHINE_ID
 fi
 
+# 检查必要的环境变量
+if [ -z "$NETWORK_SECRET" ]; then
+    echo "ERROR: NETWORK_SECRET environment variable is required"
+    exit 1
+fi
+
 # 生成核心配置文件
 cat > config.toml << EOF
 # 基本设置
@@ -64,7 +70,6 @@ EOF
 # 如果存在外部 peer 配置文件，则替换 peer 配置
 if [ -f "/app/peers.toml" ]; then
     echo "Using external peers configuration..."
-    # 这里可以添加逻辑来合并或替换 peer 配置
 fi
 
 # 创建必要的目录
