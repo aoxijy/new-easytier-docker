@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build, Push and Run EasyTier
 
 on:
   push:
@@ -29,6 +29,117 @@ jobs:
       with:
         context: .
         platforms: linux/amd64
-        push: true  # 确保这是true
+        push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  run-easytier:
+    runs-on: ubuntu-latest
+    needs: build-and-push  # 依赖于构建任务完成
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup TUN device
+      run: |
+        # 创建 TUN 设备目录和设备文件
+        sudo mkdir -p /dev/net
+        sudo mknod /dev/net/tun c 10 200
+        sudo chmod 0666 /dev/net/tun
+        echo "TUN设备创建完成"
+        
+        # 验证 TUN 设备
+        ls -la /dev/net/tun
+
+    - name: Download and prepare EasyTier binary
+      run: |
+        # 这里假设您有 easytier 二进制文件，或者从发布页面下载
+        # 示例：从 GitHub Releases 下载（请替换为实际的下载URL）
+        # wget -O easytier https://github.com/your-repo/easytier/releases/latest/download/easytier-linux-amd64
+        # chmod +x easytier
+        
+        # 如果二进制文件在仓库中
+        chmod +x easytier  # 确保二进制文件有执行权限
+        
+        # 设置网络能力（如果需要）
+        sudo setcap cap_net_admin+ep ./easytier || true
+
+    - name: Create configuration file
+      run: |
+        cat > config.toml << 'EOF'
+        [core]
+        ctrl_listen = "0.0.0.0:15888"
+
+        [network_protocol_stack]
+        listeners = [
+            "tcp://0.0.0.0:19001",
+            "wss://0.0.0.0:19002/",
+        ]
+        rpc_portal = "0.0.0.0:15889"
+        tcp_whitelist = []
+        udp_whitelist = []
+
+        [network_identity]
+        network_name = "default"
+        network_secret = ""
+
+        # 清理重复的配置，每个地址只保留一次
+        [[peer]]
+        uri = "tcp://gd.et.tianpao.top:11010"
+
+        [[peer]]
+        uri = "tcp://gz.server.piedaochuan.top:11010"
+
+        [flags]
+        EOF
+        
+        echo "配置文件创建完成"
+
+    - name: Run EasyTier core service
+      run: |
+        # 使用 sudo 运行 easytier 核心服务
+        echo "启动 EasyTier 核心服务..."
+        sudo ./easytier -c config.toml &
+        EASYTIER_PID=$!
+        echo "EasyTier 进程ID: $EASYTIER_PID"
+        
+        # 等待服务启动
+        sleep 10
+        
+        # 检查进程是否还在运行
+        if ps -p $EASYTIER_PID > /dev/null; then
+          echo "EasyTier 核心服务启动成功"
+        else
+          echo "EasyTier 核心服务启动失败"
+          exit 1
+        fi
+
+    - name: Run EasyTier Web Embed (if available)
+      run: |
+        # 如果有 web embed 二进制文件
+        if [ -f "./easytier-web-embed" ]; then
+          chmod +x ./easytier-web-embed
+          echo "启动 EasyTier Web 界面..."
+          ./easytier-web-embed --web-server-port 11211 --api-host "https://zw.gqru.com" &
+          WEB_PID=$!
+          echo "Web 界面进程ID: $WEB_PID"
+          sleep 5
+        else
+          echo "未找到 easytier-web-embed 二进制文件，跳过 Web 界面启动"
+        fi
+
+    - name: Verify services are running
+      run: |
+        echo "检查运行中的进程:"
+        ps aux | grep easytier || true
+        
+        echo "检查网络端口监听:"
+        netstat -tlnp | grep -E '(15888|19001|19002|11211)' || true
+        
+        echo "服务状态检查完成"
+
+    - name: Keep services running for testing
+      run: |
+        echo "服务将持续运行 5 分钟进行测试..."
+        # 保持服务运行一段时间以便测试
+        sleep 300
