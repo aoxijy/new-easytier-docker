@@ -28,18 +28,10 @@ RUN apk add --no-cache curl iptables ip6tables unzip gettext
 # 创建工作目录
 WORKDIR /app
 
-# 下载 EasyTier - 使用正确的架构名称
+# 下载 EasyTier - 仅 AMD64 架构
 RUN set -eux && \
-    # 根据 TARGETARCH 设置正确的架构名称
-    if [ "$TARGETARCH" = "amd64" ]; then \
-        ARCH="x86_64"; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        ARCH="arm"; \
-    else \
-        ARCH="x86_64"; \
-    fi && \
-    \
-    # 构建下载 URL
+    # 固定使用 x86_64 架构
+    ARCH="x86_64" && \
     URL="https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
     \
     echo "Downloading EasyTier v${EASYTIER_VERSION} for ${ARCH}..." && \
