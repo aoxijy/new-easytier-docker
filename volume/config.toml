@@ -1,0 +1,45 @@
+# EasyTier 默认配置文件
+# 路径: /etc/easytier/config.toml
+# 在 Docker 中可通过 -v /host/path/config.toml:/etc/easytier/config.toml 覆盖
+
+instance_name = "default"
+host_name = "docker-node"
+
+# 虚拟网络设置
+ipv4 = "172.18.29.30"  # 默认节点IP
+dhcp = false          # 禁用DHCP（推荐手动分配IP）
+
+# 远程节点列表（初始连接节点）
+exit_nodes = []
+
+# RPC 管理接口
+rpc_portal = "0.0.0.0:15888"  # 允许外部访问管理接口
+
+# 监听器配置（使用标准端口）
+listeners = [
+    "tcp://0.0.0.0:11010",    # TCP 通信端口
+    "udp://0.0.0.0:11010",    # UDP 通信端口
+    "tcp://[::]:11010",        # IPv6 TCP
+    "udp://[::]:11010",        # IPv6 UDP
+    "wss://0.0.0.0:11011/",   # WebSocket 安全端口
+    "wss://[::]:11011/"        # IPv6 WebSocket
+]
+
+# 网络凭证（启动后会从配置服务器获取实际值）
+[network_identity]
+network_name = "default-network"
+network_secret = "change-me-please"
+
+# 初始对等节点（连接官方公共节点）
+[[peer]]
+uri = "tcp://public.easytier.top:11010"
+
+# 高级参数配置
+[flags]
+dev_name = "easytier0"       # 虚拟接口名称
+enable_ipv6 = false          # 禁用IPv6（简化配置）
+enable_exit_node = false     # 禁用出口节点功能
+enable_kcp_proxy = false     # 禁用KCP代理
+enable_quic_proxy = false    # 禁用QUIC代理
+multi_thread = true          # 启用多线程
+disable_encryption = false   # 保持加密
