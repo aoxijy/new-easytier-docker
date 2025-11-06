@@ -18,59 +18,36 @@ if [ -z "$NETWORK_SECRET" ]; then
     exit 1
 fi
 
-# 生成核心配置文件
-cat > config.toml << EOF
-# 基本设置
-instance_name = "${INSTANCE_NAME}"
-machine_id = "${MACHINE_ID}"
-ipv4 = "${IPV4}"
-dhcp = ${DHCP}
-hostname = "${HOSTNAME}"
+# 复制原始配置文件
+cp config.toml config.toml.template
 
-# 监听端口配置
-listeners = [
-    "tcp://0.0.0.0:19001",
-    "udp://0.0.0.0:19001",
-    "udp://[::]:19001",
-    "tcp://[::]:19001",
-    "wss://0.0.0.0:19002/",
-    "wss://[::]:19002/",
-]
+# 使用 envsubst 替换环境变量（处理简单的 ${VAR} 替换）
+envsubst < config.toml.template > config.toml.final
 
-# RPC 管理接口
-rpc_portal = "${RPC_PORTAL}"
+# 处理复杂的条件逻辑（移除模板语法）
+sed -i '/{{ if fileExists "\/app\/peers.toml" }}/,/{{ end }}/d' config.toml.final
 
-# 网络标识
-network_name = "${NETWORK_NAME}"
-network_secret = "${NETWORK_SECRET}"
-
-# 对等节点配置
-[[peer]]
-uri = "tcp://8.134.177.98:19001"
-
-[[peer]]
-uri = "tcp://47.119.115.81:19001"
-
-# 高级设置
-default_protocol = "${DEFAULT_PROTOCOL}"
-dev_name = ""
-disable_encryption = false
-disable_ipv6 = false
-mtu = ${MTU}
-latency_first = true
-enable_exit_node = ${ENABLE_EXIT_NODE}
-no_tun = false
-use_smoltcp = false
-relay_network_whitelist = ["*"]
-disable_p2p = ${DISABLE_P2P}
-relay_all_peer_rpc = false
-config_server = "${CONFIG_SERVER}"
-EOF
-
-# 如果存在外部 peer 配置文件，则替换 peer 配置
+# 如果存在 peers.toml 文件，添加对应的配置
 if [ -f "/app/peers.toml" ]; then
-    echo "Using external peers configuration..."
+    echo "Using external peers configuration from peers.toml"
+    # 这里可以添加逻辑来合并 peer 配置
+    cat /app/peers.toml >> config.toml.final
+else
+    echo "Using default peers configuration"
+    # 添加默认的 peer 配置
+    cat >> config.toml.final << 'EOF'
+
+# 默认 peer 配置
+[[peer]]
+uri = "tcp://gd.et.tianpao.top:11010"
+
+[[peer]]
+uri = "tcp://gz.server.piedaochuan.top:11010"
+EOF
 fi
+
+# 使用最终的配置文件
+mv config.toml.final config.toml
 
 # 创建必要的目录
 mkdir -p /app/data /app/logs
