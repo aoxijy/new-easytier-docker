@@ -2,60 +2,49 @@ version: '3.8'
 
 services:
   easytier:
-    build:
-      context: .
-      args:
-        - EASYTIER_VERSION=2.4.5
-    container_name: easytier
+    image: aoxijy/easytier-mange:latest  # 请确保使用你实际推送的镜像标签，例如特定的版本号或`latest`
+    container_name: easytier-mange
     restart: unless-stopped
-    privileged: true
+    privileged: true  # EasyTier可能需要较高权限来管理网络[citation:2]
+    network_mode: "host"  # 使用host网络模式可能有助于避免网络复杂性[citation:6]
+    # 如果你不采用host网络模式，可以参考下面的ports映射和自定义网络
+    # ports:
+    #   - "19001:19001/tcp"
+    #   - "19001:19001/udp"
+    #   - "19002:19002/tcp"
+    #   - "11211:11211/tcp"
+    #   - "15889:15889/tcp"
     cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv6.conf.all.forwarding=1
-    ports:
-      - "${TCP_PORT}:19001/tcp"
-      - "${TCP_PORT}:19001/udp"
-      - "${WSS_PORT}:19002/tcp"
-      - "${WEB_PORT}:11211/tcp"
-      - "15889:15889/tcp"
+      - NET_ADMIN  # 为容器添加网络管理权限[citation:2]
     environment:
-      - INSTANCE_NAME=${INSTANCE_NAME}
-      - MACHINE_ID=${MACHINE_ID}
-      - IPV4=${IPV4}
-      - DHCP=${DHCP}
-      - HOSTNAME=${HOSTNAME}
-      - NETWORK_NAME=${NETWORK_NAME}
-      # 敏感信息通过环境文件或运行时传入
-      - NETWORK_SECRET=${NETWORK_SECRET}
-      - RPC_PORTAL=${RPC_PORTAL}
-      - WEB_PORT=${WEB_PORT}
-      - API_HOST=${API_HOST}
-      - TCP_PORT=${TCP_PORT}
-      - WSS_PORT=${WSS_PORT}
-      - CONFIG_SERVER=${CONFIG_SERVER}
-      - DEFAULT_PROTOCOL=${DEFAULT_PROTOCOL}
-      - MTU=${MTU}
-      - ENABLE_EXIT_NODE=${ENABLE_EXIT_NODE}
-      - DISABLE_P2P=${DISABLE_P2P}
+      - INSTANCE_NAME=${INSTANCE_NAME:-node-docker}  # 从环境变量文件读取，或使用默认值
+      - MACHINE_ID=${MACHINE_ID:-}
+      - IPV4=${IPV4:-172.18.28.100}
+      - DHCP=${DHCP:-false}
+      - HOSTNAME=${HOSTNAME:-easytier-docker}
+      - NETWORK_NAME=${NETWORK_NAME:-yksnet}
+      - NETWORK_SECRET=${NETWORK_SECRET}  # 敏感信息建议通过环境变量文件或运行时传入
+      - RPC_PORTAL=${RPC_PORTAL:-0.0.0.0:15889}
+      - WEB_PORT=${WEB_PORT:-11211}
+      - API_HOST=${API_HOST:-https://zw.gqru.com}
+      - TCP_PORT=${TCP_PORT:-19001}
+      - WSS_PORT=${WSS_PORT:-19002}
+      - CONFIG_SERVER=${CONFIG_SERVER:-udp://127.0.0.1:22020}
+      - DEFAULT_PROTOCOL=${DEFAULT_PROTOCOL:-tcp}
+      - MTU=${MTU:-1380}
+      - ENABLE_EXIT_NODE=${ENABLE_EXIT_NODE:-false}
+      - DISABLE_P2P=${DISABLE_P2P:-false}
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./peers.toml:/app/peers.toml:ro
-    healthcheck:
-      test: ["CMD", "pidof", "easytier-core"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      easytier-net:
-        ipv4_address: ${IPV4}
+      - ./data:/app/data  # 持久化存储数据
+      - ./logs:/app/logs  # 持久化存储日志
+    #  networks:  # 如果使用自定义网络，取消注释并调整
+    #    easytier-net:
+    #      ipv4_address: ${IPV4}
 
-networks:
-  easytier-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.18.28.0/24
+# 如果使用自定义网络，取消注释以下部分
+# networks:
+#   easytier-net:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.18.28.0/24
