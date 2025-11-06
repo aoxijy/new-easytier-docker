@@ -23,51 +23,34 @@ ENV ENABLE_EXIT_NODE=false
 ENV DISABLE_P2P=false
 
 # 安装依赖
-RUN apk add --no-cache curl iptables ip6tables unzip gettext
+RUN apk add --no-cache curl unzip gettext
 
 # 创建工作目录
 WORKDIR /app
 
-# 下载 EasyTier - 仅 AMD64 架构
-RUN set -eux && \
-    # 固定使用 x86_64 架构
-    ARCH="x86_64" && \
-    URL="https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
-    \
-    echo "Downloading EasyTier v${EASYTIER_VERSION} for ${ARCH}..." && \
-    echo "URL: $URL" && \
-    \
-    # 下载文件
-    curl -f -L -o easytier.zip "$URL" && \
-    \
-    # 解压文件
-    unzip -o easytier.zip && \
-    \
-    # 检查解压后的文件
-    echo "Files after unzip:" && \
+# 下载 EasyTier - 修复版本
+RUN echo "下载 EasyTier v${EASYTIER_VERSION}" && \
+    curl -L -o easytier.zip \
+    "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-x86_64-v${EASYTIER_VERSION}.zip" && \
+    echo "解压文件..." && \
+    unzip easytier.zip && \
+    echo "解压后的文件:" && \
     ls -la && \
-    \
-    # 安装二进制文件
-    if [ -f "easytier-core" ] && [ -f "easytier-web-embed" ]; then \
-        chmod +x easytier-core easytier-web-embed && \
-        mv easytier-core easytier-web-embed /usr/local/bin/ && \
-        echo "Installation successful"; \
-    else \
-        echo "ERROR: Required binaries not found after unzip" && \
-        echo "Available files:" && \
-        ls -la && \
-        exit 1; \
-    fi && \
-    \
-    # 清理
-    rm -f easytier.zip && \
-    echo "EasyTier v${EASYTIER_VERSION} for ${ARCH} installed successfully"
+    echo "进入目录查看内容..." && \
+    cd easytier-linux-x86_64 && \
+    ls -la && \
+    echo "安装二进制文件..." && \
+    # 从目录中复制二进制文件
+    cp easytier-linux-x86_64/easytier-core /usr/local/bin/ && \
+    cp easytier-linux-x86_64/easytier-web-embed /usr/local/bin/ && \
+    chmod +x /usr/local/bin/easytier-core /usr/local/bin/easytier-web-embed && \
+    rm -rf easytier.zip easytier-linux-x86_64 && \
+    echo "安装完成"
 
 # 复制配置文件和启动脚本
-COPY config.toml ./
-COPY entrypoint.sh ./
+COPY config.toml entrypoint.sh ./
 
-# 设置权限和用户
+# 设置权限
 RUN chmod +x entrypoint.sh && \
     adduser -D -s /bin/sh easytier && \
     chown -R easytier:easytier /app
