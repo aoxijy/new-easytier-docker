@@ -34,15 +34,26 @@ RUN echo "下载 EasyTier v${EASYTIER_VERSION}" && \
     "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-x86_64-v${EASYTIER_VERSION}.zip" && \
     echo "解压文件..." && \
     unzip easytier.zip && \
-    echo "解压后的文件:" && \
+    echo "解压后的根目录:" && \
     ls -la && \
-    echo "进入目录查看内容..." && \
-    cd easytier-linux-x86_64 && \
-    ls -la && \
-    echo "安装二进制文件..." && \
-    # 从目录中复制二进制文件
-    cp easytier-linux-x86_64/easytier-core /usr/local/bin/ && \
-    cp easytier-linux-x86_64/easytier-web-embed /usr/local/bin/ && \
+    echo "查找二进制文件..." && \
+    # 查找所有可执行文件
+    find . -name "easytier-core" -type f && \
+    find . -name "easytier-web-embed" -type f && \
+    # 尝试不同的可能路径
+    ( [ -f "easytier-linux-x86_64/easytier-core" ] && \
+      [ -f "easytier-linux-x86_64/easytier-web-embed" ] && \
+      echo "在 easytier-linux-x86_64/ 目录中找到文件" && \
+      cp easytier-linux-x86_64/easytier-core /usr/local/bin/ && \
+      cp easytier-linux-x86_64/easytier-web-embed /usr/local/bin/ ) || \
+    ( [ -f "easytier-core" ] && \
+      [ -f "easytier-web-embed" ] && \
+      echo "在根目录中找到文件" && \
+      cp easytier-core /usr/local/bin/ && \
+      cp easytier-web-embed /usr/local/bin/ ) || \
+    ( echo "找不到二进制文件，当前目录结构:" && \
+      find . -type f -name "*easytier*" && \
+      exit 1 ) && \
     chmod +x /usr/local/bin/easytier-core /usr/local/bin/easytier-web-embed && \
     rm -rf easytier.zip easytier-linux-x86_64 && \
     echo "安装完成"
