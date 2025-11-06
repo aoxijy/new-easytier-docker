@@ -28,51 +28,48 @@ RUN apk add --no-cache curl iptables ip6tables unzip gettext
 # 创建工作目录
 WORKDIR /app
 
-# 下载 EasyTier - 修复版本和文件名问题
+# 下载 EasyTier - 使用正确的架构名称
 RUN set -eux && \
-    # 设置架构
+    # 根据 TARGETARCH 设置正确的架构名称
     if [ "$TARGETARCH" = "amd64" ]; then \
         ARCH="x86_64"; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
-        ARCH="aarch64"; \
+        ARCH="arm"; \
     else \
         ARCH="x86_64"; \
     fi && \
     \
-    # 测试下载链接
-    echo "Downloading EasyTier v${EASYTIER_VERSION} for ${ARCH}..." && \
-    \
-    # 尝试不同的文件名格式
+    # 构建下载 URL
     URL="https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
-    echo "Trying URL: $URL" && \
+    \
+    echo "Downloading EasyTier v${EASYTIER_VERSION} for ${ARCH}..." && \
+    echo "URL: $URL" && \
     \
     # 下载文件
-    if curl -f -L -o easytier.zip "$URL"; then \
-        echo "Download successful"; \
-    else \
-        echo "First download failed, trying alternative URL..." && \
-        # 尝试其他可能的文件名格式
-        ALT_URL="https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-${ARCH}-v${EASYTIER_VERSION}.zip" && \
-        echo "Trying alternative URL: $ALT_URL" && \
-        curl -f -L -o easytier.zip "$ALT_URL" || \
-        (echo "All download attempts failed" && exit 1); \
-    fi && \
+    curl -f -L -o easytier.zip "$URL" && \
     \
     # 解压文件
-    echo "Unzipping..." && \
     unzip -o easytier.zip && \
     \
-    # 检查文件是否存在
-    echo "Checking extracted files..." && \
+    # 检查解压后的文件
+    echo "Files after unzip:" && \
     ls -la && \
     \
-    # 设置执行权限并安装
-    chmod +x easytier-core easytier-web-embed && \
-    mv easytier-core easytier-web-embed /usr/local/bin/ && \
+    # 安装二进制文件
+    if [ -f "easytier-core" ] && [ -f "easytier-web-embed" ]; then \
+        chmod +x easytier-core easytier-web-embed && \
+        mv easytier-core easytier-web-embed /usr/local/bin/ && \
+        echo "Installation successful"; \
+    else \
+        echo "ERROR: Required binaries not found after unzip" && \
+        echo "Available files:" && \
+        ls -la && \
+        exit 1; \
+    fi && \
     \
     # 清理
     rm -f easytier.zip && \
-    echo "Installation completed successfully"
+    echo "EasyTier v${EASYTIER_VERSION} for ${ARCH} installed successfully"
 
 # 复制配置文件和启动脚本
 COPY config.toml ./
