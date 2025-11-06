@@ -1,65 +1,131 @@
-name: Build and Push Docker Image
+name: Build, Push and Run EasyTier
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'EasyTier Version'
-        required: true
-        default: '2.4.5'
+    branches: [ "main" ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: aoxijy/easytier-mange
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to Docker Hub
+    - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Extract version metadata
-      id: meta
-      run: |
-        if [ -n "${{ github.event.inputs.version }}" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        elif [[ ${{ github.ref }} == refs/tags/* ]]; then
-          VERSION=${GITHUB_REF#refs/tags/v}
-        else
-          VERSION="latest"
-        fi
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-    - name: Build and push
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/easytier-mange:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/easytier-mange:${{ steps.meta.outputs.version }}
-        build-args: |
-          EASYTIER_VERSION=${{ github.event.inputs.version || '2.4.5' }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-  # 移除有问题的测试步骤，或者修复它
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Test EasyTier
-  #     run: |
-  #       # 如果需要测试，应该下载正确的二进制文件
-  #       curl -L -o easytier.zip https://github.com/EasyTier/EasyTier/releases/download/v2.4.5/easytier-linux-x86_64-v2.4.5.zip
-  #       unzip easytier.zip
-  #       cd easytier-linux-x86_64
-  #       ./easytier-core --version || echo "测试完成"
+  run-easytier:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup TUN device
+      run: |
+        sudo mkdir -p /dev/net
+        if [ ! -c /dev/net/tun ]; then
+          echo "创建 TUN 设备..."
+          sudo mknod /dev/net/tun c 10 200
+          sudo chmod 0666 /dev/net/tun
+        else
+          echo "TUN设备已存在"
+          sudo chmod 0666 /dev/net/tun
+        fi
+        ls -la /dev/net/tun
+
+    - name: Download EasyTier binary
+      run: |
+        # 方法1: 从 GitHub Releases 下载（请替换为实际的下载URL）
+        # 示例URL，请根据实际情况修改
+        EASYTIER_VERSION="v1.0.0"  # 修改为实际版本
+        wget -O easytier https://github.com/your-username/easytier/releases/download/${EASYTIER_VERSION}/easytier-linux-amd64
+        chmod +x easytier
+        
+        # 或者方法2: 如果二进制文件在仓库的某个目录中
+        # cp ./bin/easytier ./
+        # chmod +x easytier
+        
+        echo "下载完成，文件信息:"
+        ls -la easytier
+        file easytier || echo "无法识别文件类型"
+
+    - name: Create configuration file
+      run: |
+        cat > config.toml << 'EOF'
+        [core]
+        ctrl_listen = "0.0.0.0:15888"
+
+        [network_protocol_stack]
+        listeners = [
+            "tcp://0.0.0.0:19001",
+            "wss://0.0.0.0:19002/",
+        ]
+        rpc_portal = "0.0.0.0:15889"
+
+        [network_identity]
+        network_name = "default"
+        network_secret = ""
+
+        [[peer]]
+        uri = "tcp://gd.et.tianpao.top:11010"
+
+        [[peer]]
+        uri = "tcp://gz.server.piedaochuan.top:11010"
+
+        [flags]
+        EOF
+
+    - name: Run EasyTier core service
+      run: |
+        echo "当前目录文件:"
+        ls -la
+        
+        echo "检查 easytier 二进制文件:"
+        if [ -f "./easytier" ]; then
+          echo "✅ 找到 easytier 二进制文件"
+          ./easytier --version || echo "无法获取版本信息"
+        else
+          echo "❌ 未找到 easytier 二进制文件"
+          exit 1
+        fi
+        
+        echo "启动 EasyTier 核心服务..."
+        sudo ./easytier -c config.toml &
+        EASYTIER_PID=$!
+        echo "EasyTier 进程ID: $EASYTIER_PID"
+        
+        sleep 10
+        
+        if ps -p $EASYTIER_PID > /dev/null; then
+          echo "✅ EasyTier 核心服务启动成功"
+          sudo netstat -tlnp | grep -E '(15888|19001|19002)' || echo "端口检查中..."
+        else
+          echo "❌ EasyTier 核心服务启动失败"
+          exit 1
+        fi
+
+    - name: Test run for 2 minutes
+      run: |
+        echo "测试运行 2 分钟..."
+        sleep 120
+        echo "测试完成"
