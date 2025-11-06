@@ -45,7 +45,7 @@ RUN ARCH=$(case "$TARGETARCH" in \
     mv easytier-core easytier-web-embed /usr/local/bin/
 
 # 复制配置文件和启动脚本
-COPY config.toml.template ./
+COPY config.toml ./
 COPY entrypoint.sh ./
 
 # 设置权限
