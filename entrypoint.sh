@@ -12,7 +12,7 @@ if [ -z "$MACHINE_ID" ]; then
     export MACHINE_ID
 fi
 
-# 生成配置文件
+# 生成核心配置文件
 cat > config.toml << EOF
 # 基本设置
 instance_name = "${INSTANCE_NAME}"
@@ -65,8 +65,6 @@ EOF
 if [ -f "/app/peers.toml" ]; then
     echo "Using external peers configuration..."
     # 这里可以添加逻辑来合并或替换 peer 配置
-    # 当前实现使用外部文件的完整配置
-    cp /app/peers.toml /app/peer_config.toml
 fi
 
 # 创建必要的目录
@@ -75,11 +73,21 @@ mkdir -p /app/data /app/logs
 # 设置权限
 chown -R easytier:easytier /app
 
-# 启动 EasyTier Core
+# 启动 EasyTier Core (后台运行)
 echo "Starting EasyTier Core..."
 echo "Instance: ${INSTANCE_NAME}"
 echo "Network: ${NETWORK_NAME}"
 echo "IP: ${IPV4}"
 echo "Machine ID: ${MACHINE_ID}"
 
-exec easytier-core -c /app/config.toml
+easytier-core -c /app/config.toml &
+
+# 等待 core 启动
+sleep 5
+
+# 启动 EasyTier Web Embed (前台运行)
+echo "Starting EasyTier Web Embed..."
+echo "Web Portal: http://0.0.0.0:${WEB_PORT}"
+echo "API Host: ${API_HOST}"
+
+exec easytier-web-embed --api-host "${API_HOST}" --web-port "${WEB_PORT}"
