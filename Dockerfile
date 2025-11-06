@@ -1,10 +1,10 @@
 FROM alpine:latest
 
 # 构建参数
-ARG EASYTIER_VERSION=2.1.2
+ARG EASYTIER_VERSION=2.4.5
 ARG TARGETARCH=amd64
 
-# 环境变量（移除敏感信息）
+# 环境变量
 ENV EASYTIER_VERSION=${EASYTIER_VERSION}
 ENV INSTANCE_NAME=node-docker
 ENV MACHINE_ID=
@@ -23,21 +23,22 @@ ENV MTU=1380
 ENV ENABLE_EXIT_NODE=false
 ENV DISABLE_P2P=false
 
-# 安装依赖和创建用户（添加 gettext 包用于 envsubst）
-RUN apk add --no-cache curl iptables ip6tables unzip gettext && \
-    adduser -D -s /bin/sh easytier
+# 安装依赖
+RUN apk add --no-cache curl iptables ip6tables unzip gettext
 
 # 创建工作目录
 WORKDIR /app
 
-# 下载并安装 EasyTier (包含 core 和 web-embed)
-RUN ARCH=$(case "$TARGETARCH" in \
-        "amd64") echo "x86_64" ;; \
-        "arm64") echo "aarch64" ;; \
-        *) echo "x86_64" ;; \
-    esac) && \
+# 下载脚本 - 更简单可靠的方式
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        ARCH="x86_64"; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        ARCH="aarch64"; \
+    else \
+        ARCH="x86_64"; \
+    fi && \
     curl -L -o easytier.zip \
-    "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
+        "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
     unzip easytier.zip && \
     rm easytier.zip && \
     chmod +x easytier-core easytier-web-embed && \
@@ -47,9 +48,10 @@ RUN ARCH=$(case "$TARGETARCH" in \
 COPY config.toml ./
 COPY entrypoint.sh ./
 
-# 设置权限
-RUN chown -R easytier:easytier /app && \
-    chmod +x entrypoint.sh
+# 设置权限和用户
+RUN chmod +x entrypoint.sh && \
+    adduser -D -s /bin/sh easytier && \
+    chown -R easytier:easytier /app
 
 # 暴露端口
 EXPOSE 19001/tcp 19001/udp 19002/tcp 11211/tcp 15889/tcp
