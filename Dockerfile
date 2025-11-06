@@ -1,51 +1,63 @@
-# 使用最小的 Linux 系统作为基础镜像
 FROM alpine:latest
 
-# 设置版本号环境变量
-ARG VERSION=v2.3.2
+# 构建参数
+ARG EASYTIER_VERSION=2.1.2
+ARG TARGETARCH=amd64
 
-# 安装必要工具
-RUN apk add --no-cache curl unzip iptables iproute2 jq
+# 环境变量
+ENV EASYTIER_VERSION=${EASYTIER_VERSION}
+ENV INSTANCE_NAME=node-docker
+ENV MACHINE_ID=
+ENV IPV4=172.18.28.100
+ENV DHCP=false
+ENV HOSTNAME=easytier-docker
+ENV NETWORK_NAME=gqrunet
+ENV NETWORK_SECRET=gqru123456
+ENV RPC_PORTAL=127.0.0.1:15889
+ENV TCP_PORT=19001
+ENV WSS_PORT=19002
+ENV CONFIG_SERVER=udp://127.0.0.1:22020
+ENV DEFAULT_PROTOCOL=tcp
+ENV MTU=1380
+ENV ENABLE_EXIT_NODE=false
+ENV DISABLE_P2P=false
+
+# 安装依赖和创建用户
+RUN apk add --no-cache curl iptables ip6tables unzip && \
+    adduser -D -s /bin/sh easytier
 
 # 创建工作目录
 WORKDIR /app
 
-# 下载 EasyTier 二进制文件
-RUN curl -LO "https://github.com/EasyTier/EasyTier/releases/download/${VERSION}/easytier-linux-x86_64-${VERSION}.zip" \
-    && unzip -j easytier-linux-x86_64-${VERSION}.zip \
-    && rm easytier-linux-x86_64-${VERSION}.zip \
-    && chmod +x easytier-*
+# 下载并安装 EasyTier
+RUN ARCH=$(case "$TARGETARCH" in \
+        "amd64") echo "x86_64" ;; \
+        "arm64") echo "aarch64" ;; \
+        *) echo "x86_64" ;; \
+    esac) && \
+    curl -L -o easytier.zip \
+    "https://github.com/EasyTier/EasyTier/releases/download/v${EASYTIER_VERSION}/easytier-linux-${ARCH}-v${EASYTIER_VERSION}.zip" && \
+    unzip easytier.zip && \
+    rm easytier.zip && \
+    chmod +x easytier-core && \
+    mv easytier-core /usr/local/bin/
 
-# 创建 TUN 设备
-RUN mkdir -p /dev/net \
-    && mknod /dev/net/tun c 10 200 \
-    && chmod 0666 /dev/net/tun
+# 复制配置文件和启动脚本
+COPY config.toml.template ./
+COPY entrypoint.sh ./
 
-# 创建配置目录
-RUN mkdir -p /etc/easytier
+# 设置权限
+RUN chown -R easytier:easytier /app && \
+    chmod +x entrypoint.sh
 
-# 复制您的默认配置文件（从构建上下文复制）
-COPY config.toml /etc/easytier/config.toml
+# 暴露端口
+# 19001: TCP/UDP 主要通信端口
+# 19002: WebSocket Secure 端口
+# 15889: RPC 管理端口
+EXPOSE 19001/tcp 19001/udp 19002/tcp 15889/tcp
 
-# 创建 entrypoint 脚本
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo 'if [ -n "$ET_CONFIG_SERVER" ]; then' >> /app/entrypoint.sh && \
-    echo '    tmp_file=$(mktemp)' >> /app/entrypoint.sh && \
-    echo '    jq --arg server "$ET_CONFIG_SERVER" '\''.config_server = $server'\'' /etc/easytier/config.toml > "$tmp_file"' >> /app/entrypoint.sh && \
-    echo '    [ -s "$tmp_file" ] && mv "$tmp_file" /etc/easytier/config.toml' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo 'if [ -n "$ET_MACHINE_ID" ]; then' >> /app/entrypoint.sh && \
-    echo '    tmp_file=$(mktemp)' >> /app/entrypoint.sh && \
-    echo '    jq --arg id "$ET_MACHINE_ID" '\''.machine_id = $id'\'' /etc/easytier/config.toml > "$tmp_file"' >> /app/entrypoint.sh && \
-    echo '    [ -s "$tmp_file" ] && mv "$tmp_file" /etc/easytier/config.toml' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo 'exec /app/easytier-core --config-file /etc/easytier/config.toml' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+# 切换用户
+USER easytier
 
-# 暴露标准端口
-EXPOSE 11010/tcp 11010/udp 11011/tcp 11020/tcp 15888/tcp
-
-# 设置容器启动命令
-ENTRYPOINT ["/app/entrypoint.sh"]
+# 启动脚本
+ENTRYPOINT ["./entrypoint.sh"]
