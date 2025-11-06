@@ -1,0 +1,14 @@
+services:
+  easytier:
+    image: ghcr.io/kenny8zeng/kenny8zeng/docker-easytier:latest
+    container_name: easytier
+    network_mode: host
+    privileged: true
+    user: root
+    volumes:
+      - ${PWD}/volume:/data
+    environment:
+      - VERSION=2.1.2
+    restart: unless-stopped
+    command: ["/easytier/easytier-core", "--config-file", "/data/config.toml"]
+
