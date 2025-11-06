@@ -18,23 +18,22 @@ if [ -z "$NETWORK_SECRET" ]; then
     exit 1
 fi
 
-# 复制原始配置文件
-cp config.toml config.toml.template
+# 使用 envsubst 替换所有环境变量
+envsubst < config.toml > config.toml.final
 
-# 使用 envsubst 替换环境变量（处理简单的 ${VAR} 替换）
-envsubst < config.toml.template > config.toml.final
-
-# 处理复杂的条件逻辑（移除模板语法）
-sed -i '/{{ if fileExists "\/app\/peers.toml" }}/,/{{ end }}/d' config.toml.final
-
-# 如果存在 peers.toml 文件，添加对应的配置
+# 处理 peers 配置
 if [ -f "/app/peers.toml" ]; then
     echo "Using external peers configuration from peers.toml"
-    # 这里可以添加逻辑来合并 peer 配置
+    # 移除模板注释，添加实际配置
+    sed -i '/{{ if fileExists "\/app\/peers.toml" }}/d' config.toml.final
+    sed -i '/{{ else }}/d' config.toml.final
+    sed -i '/{{ end }}/d' config.toml.final
     cat /app/peers.toml >> config.toml.final
 else
     echo "Using default peers configuration"
-    # 添加默认的 peer 配置
+    # 移除模板注释，保留默认配置
+    sed -i '/{{ if fileExists "\/app\/peers.toml" }}/,/{{ end }}/d' config.toml.final
+    # 添加默认 peers
     cat >> config.toml.final << 'EOF'
 
 # 默认 peer 配置
@@ -51,9 +50,6 @@ mv config.toml.final config.toml
 
 # 创建必要的目录
 mkdir -p /app/data /app/logs
-
-# 设置权限
-chown -R easytier:easytier /app
 
 # 启动 EasyTier Core (后台运行)
 echo "Starting EasyTier Core..."
