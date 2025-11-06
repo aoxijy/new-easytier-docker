@@ -1,14 +1,61 @@
+version: '3.8'
+
 services:
   easytier:
-    image: ghcr.io/kenny8zeng/kenny8zeng/docker-easytier:latest
+    build:
+      context: .
+      args:
+        - EASYTIER_VERSION=2.1.2
     container_name: easytier
-    network_mode: host
-    privileged: true
-    user: root
-    volumes:
-      - ${PWD}/volume:/data
-    environment:
-      - VERSION=2.1.2
     restart: unless-stopped
-    command: ["/easytier/easytier-core", "--config-file", "/data/config.toml"]
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    ports:
+      # 主要通信端口
+      - "${TCP_PORT}:19001/tcp"
+      - "${TCP_PORT}:19001/udp"
+      # WebSocket Secure 端口
+      - "${WSS_PORT}:19002/tcp"
+      # RPC 管理端口（内部使用，可选暴露）
+      - "15889:15889/tcp"
+    environment:
+      - INSTANCE_NAME=${INSTANCE_NAME}
+      - MACHINE_ID=${MACHINE_ID}
+      - IPV4=${IPV4}
+      - DHCP=${DHCP}
+      - HOSTNAME=${HOSTNAME}
+      - NETWORK_NAME=${NETWORK_NAME}
+      - NETWORK_SECRET=${NETWORK_SECRET}
+      - RPC_PORTAL=${RPC_PORTAL}
+      - TCP_PORT=${TCP_PORT}
+      - WSS_PORT=${WSS_PORT}
+      - CONFIG_SERVER=${CONFIG_SERVER}
+      - DEFAULT_PROTOCOL=${DEFAULT_PROTOCOL}
+      - MTU=${MTU}
+      - ENABLE_EXIT_NODE=${ENABLE_EXIT_NODE}
+      - DISABLE_P2P=${DISABLE_P2P}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      # 可选：挂载自定义 peer 配置
+      - ./peers.toml:/app/peers.toml:ro
+    healthcheck:
+      test: ["CMD", "pidof", "easytier-core"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      easytier-net:
+        ipv4_address: ${IPV4}
 
+networks:
+  easytier-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.28.0/24
