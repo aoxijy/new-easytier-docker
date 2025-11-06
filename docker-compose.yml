@@ -5,7 +5,7 @@ services:
     build:
       context: .
       args:
-        - EASYTIER_VERSION=2.1.2
+        - EASYTIER_VERSION=2.4.5
     container_name: easytier
     restart: unless-stopped
     privileged: true
