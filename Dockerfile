@@ -12,7 +12,6 @@ ENV IPV4=172.18.28.100
 ENV DHCP=false
 ENV HOSTNAME=easytier-docker
 ENV NETWORK_NAME=yksnet
-# 注意：NETWORK_SECRET 不再在这里设置，通过运行时环境变量传入
 ENV RPC_PORTAL=0.0.0.0:15889
 ENV WEB_PORT=11211
 ENV API_HOST=https://zw.gqru.com
@@ -24,8 +23,8 @@ ENV MTU=1380
 ENV ENABLE_EXIT_NODE=false
 ENV DISABLE_P2P=false
 
-# 安装依赖和创建用户
-RUN apk add --no-cache curl iptables ip6tables unzip && \
+# 安装依赖和创建用户（添加 gettext 包用于 envsubst）
+RUN apk add --no-cache curl iptables ip6tables unzip gettext && \
     adduser -D -s /bin/sh easytier
 
 # 创建工作目录
