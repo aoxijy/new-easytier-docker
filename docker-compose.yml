@@ -21,7 +21,9 @@ services:
       - "${TCP_PORT}:19001/udp"
       # WebSocket Secure 端口
       - "${WSS_PORT}:19002/tcp"
-      # RPC 管理端口（内部使用，可选暴露）
+      # Web 管理界面端口 (对应你现在的 11211)
+      - "${WEB_PORT}:11211/tcp"
+      # RPC 管理端口
       - "15889:15889/tcp"
     environment:
       - INSTANCE_NAME=${INSTANCE_NAME}
@@ -32,6 +34,8 @@ services:
       - NETWORK_NAME=${NETWORK_NAME}
       - NETWORK_SECRET=${NETWORK_SECRET}
       - RPC_PORTAL=${RPC_PORTAL}
+      - WEB_PORT=${WEB_PORT}
+      - API_HOST=${API_HOST}
       - TCP_PORT=${TCP_PORT}
       - WSS_PORT=${WSS_PORT}
       - CONFIG_SERVER=${CONFIG_SERVER}
