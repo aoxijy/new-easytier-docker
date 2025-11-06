@@ -31,7 +31,7 @@ network_secret = "${NETWORK_SECRET}"
 uri = "tcp://gd.et.tianpao.top:11010"
 
 [[peer]]
-uri = "tcp://47.119.115.81:19001"
+uri = "tcp://gz.server.piedaochuan.top:11010"
 {{ end }}
 
 # 高级设置
